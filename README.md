@@ -23,8 +23,8 @@ Este proyecto es un sistema de seguridad simulado inspirado en Stark Industries,
 
 1.  **Clonar el repositorio:**
     ```bash
-    git clone <URL-DE-TU-REPOSITORIO>
-    cd <nombre-del-repositorio>
+    git clone <(https://github.com/Guilleg8/Actividad2GuillermoGarciaPeyrona.git)>
+    cd <Actividad2GuillermoGarciaPeyrona>
     ```
 
 2.  **Crear y activar un entorno virtual:**
@@ -62,8 +62,9 @@ Una vez instaladas las dependencias, inicia el servidor de desarrollo Uvicorn de
 
 ```bash
 uvicorn main:app --reload
+```
 
-📝 Estructura del Proyecto
+##📝 Estructura del Proyecto
 .
 ├── main.py              # Aplicación principal FastAPI y definición de rutas.
 ├── processing.py        # Lógica para el procesamiento concurrente de datos.
