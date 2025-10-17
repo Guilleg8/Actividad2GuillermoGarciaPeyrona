@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stark Industries - Centro de Seguridad Concurrente</title>
     <style>
+        /* ... Tu CSS se queda igual ... */
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0d1117; color: #c9d1d9; line-height: 1.6; }
         .container { max-width: 1000px; margin: 30px auto; padding: 20px; background-color: #161b22; border-radius: 8px; box-shadow: 0 0 15px rgba(0, 255, 255, 0.4); }
         h1 { color: #00ffcc; border-bottom: 2px solid #00ffcc; padding-bottom: 10px; margin-bottom: 20px; }
@@ -31,58 +32,52 @@
             <p>Usuario: <span id="user-role" class="status-badge status-error">No Autenticado</span></p>
         </div>
 
-        <h2>🔑 Autenticación (JWT)</h2>
+        <h2>🔑 Autenticación</h2>
         <div class="box">
             <form id="login-form">
                 <label for="username">Usuario (tony/rhodey/pepper):</label>
-                <input type="text" id="username" name="username" required value="tony">
+                <input type="text" id="username" name="username" required>
 
                 <label for="password">Contraseña (ironman/war-machine/rescue):</label>
-                <input type="password" id="password" name="password" required value="ironman">
+                <input type="password" id="password" name="password" required>
 
-                <input type="submit" value="Iniciar Sesión / Obtener Token">
+                <input type="submit" value="Iniciar Sesión">
             </form>
-            <p style="margin-top: 10px; font-size: 0.8em;">Token: <code id="jwt-token">No token</code></p>
+            <p id="jwt-token-container" style="display: none;">Token: <code id="jwt-token">No token</code></p>
         </div>
 
-        <h2>🚨 Simular Evento de Sensor (Concurrencia)</h2>
+        <h2>🚨 Simular Evento de Sensor</h2>
         <div class="box">
             <form id="sensor-form">
                 <label for="sensor-type">Tipo de Sensor:</label>
                 <select id="sensor-type" name="sensor-type">
-                    <option value="motion">motion (CRITICAL: MOVIMIENTO_NO_AUTORIZADO)</option>
-                    <option value="temperature">temperature (WARNING: >150)</option>
-                    <option value="access">access (WARNING: ACCESO_DENEGADO_REPETIDO)</option>
+                    <option value="motion">movimiento</option>
+                    <option value="temperature">temperatura</option>
+                    <option value="access">acceso</option>
                 </select>
 
-                <label for="sensor-value">Valor de Datos:</label>
-                <input type="text" id="sensor-value" name="sensor-value" required value="MOVIMIENTO_NO_AUTORIZADO">
+                <input type="text" id="sensor-value" name="sensor-value" required value="MOVIMIENTO_NO_AUTORIZADO" style="display: none;">
 
-                <input type="submit" value="Enviar Evento (POST /sensor/event)">
+                <input type="submit" value="Enviar Evento">
             </form>
             <p id="sensor-response" style="font-size: 0.9em; margin-top: 10px;"></p>
         </div>
 
-        <h2>⚙️ Control de Acceso (Autorización por Roles)</h2>
-        <div class="box" style="display: flex; gap: 20px;">
-            <div>
-                <h3>GET /system/status</h3>
-                <p style="font-size: 0.9em;">(Roles permitidos: Admin, Operator, Viewer)</p>
+        <div id="protected-section" style="display: none;">
+            <h2>⚙️ Control de Acceso (Autorización por Roles)</h2>
+            <div class="box">
                 <button onclick="fetchProtected('/system/status', 'GET')">Ver Estado</button>
-            </div>
-            <div>
-                <h3>POST /system/reset</h3>
-                <p style="font-size: 0.9em;">(Rol requerido: Admin)</p>
                 <button onclick="fetchProtected('/system/reset', 'POST')">Resetear Sistema</button>
             </div>
+            <p id="protected-response" style="font-size: 0.9em; margin-top: 10px;"></p>
         </div>
-        <p id="protected-response" style="font-size: 0.9em; margin-top: 10px;"></p>
 
-        <h2>📰 Alertas en Tiempo Real (WebSocket)</h2>
+
+        <h2>📰 Alertas en Tiempo Real</h2>
         <ul id="log">
             <li>Esperando la conexión WebSocket...</li>
         </ul>
     </div>
-    <script src="/static/script.js"></script>
+    <script src="/static/script.js" defer></script>
 </body>
 </html>
