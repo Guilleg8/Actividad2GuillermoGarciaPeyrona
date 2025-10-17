@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stark Industries - Centro de Seguridad Concurrente</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0d1117; color: #c9d1d9; line-height: 1.6; }
+        .container { max-width: 1000px; margin: 30px auto; padding: 20px; background-color: #161b22; border-radius: 8px; box-shadow: 0 0 15px rgba(0, 255, 255, 0.4); }
+        h1 { color: #00ffcc; border-bottom: 2px solid #00ffcc; padding-bottom: 10px; margin-bottom: 20px; }
+        h2 { color: #38a169; margin-top: 25px; border-bottom: 1px solid #30363d; padding-bottom: 5px; }
+        .box { padding: 15px; border: 1px solid #30363d; border-radius: 4px; margin-bottom: 20px; }
+        #log { list-style: none; padding: 0; max-height: 250px; overflow-y: scroll; border: 1px solid #30363d; border-radius: 4px; background-color: #010409; }
+        #log li { padding: 8px 10px; border-bottom: 1px dashed #30363d; font-size: 0.9em; }
+        .critical { background-color: #6a0000; color: #ffcccc; font-weight: bold; }
+        .warning { background-color: #574d00; color: #ffffcc; }
+        button, input[type="submit"] { background-color: #00ffcc; color: #161b22; border: none; padding: 8px 15px; border-radius: 3px; cursor: pointer; transition: background-color 0.3s; }
+        button:hover, input[type="submit"]:hover { background-color: #00cc99; }
+        input[type="text"], input[type="password"], select, textarea { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #30363d; background-color: #0d1117; color: #c9d1d9; box-sizing: border-box; }
+        .status-badge { padding: 5px 10px; border-radius: 3px; font-weight: bold; }
+        .status-ok { background-color: #1e4d29; color: #38a169; }
+        .status-error { background-color: #6a0000; color: #ffcccc; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛡️ Stark Concurrent Security Dashboard</h1>
+
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <p>Estado del WebSocket: <span id="ws-status" class="status-badge status-error">Desconectado</span></p>
+            <p>Usuario: <span id="user-role" class="status-badge status-error">No Autenticado</span></p>
+        </div>
+
+        <h2>🔑 Autenticación (JWT)</h2>
+        <div class="box">
+            <form id="login-form">
+                <label for="username">Usuario (tony/rhodey/pepper):</label>
+                <input type="text" id="username" name="username" required value="tony">
+
+                <label for="password">Contraseña (ironman/war-machine/rescue):</label>
+                <input type="password" id="password" name="password" required value="ironman">
+
+                <input type="submit" value="Iniciar Sesión / Obtener Token">
+            </form>
+            <p style="margin-top: 10px; font-size: 0.8em;">Token: <code id="jwt-token">No token</code></p>
+        </div>
+
+        <h2>🚨 Simular Evento de Sensor (Concurrencia)</h2>
+        <div class="box">
+            <form id="sensor-form">
+                <label for="sensor-type">Tipo de Sensor:</label>
+                <select id="sensor-type" name="sensor-type">
+                    <option value="motion">motion (CRITICAL: MOVIMIENTO_NO_AUTORIZADO)</option>
+                    <option value="temperature">temperature (WARNING: >150)</option>
+                    <option value="access">access (WARNING: ACCESO_DENEGADO_REPETIDO)</option>
+                </select>
+
+                <label for="sensor-value">Valor de Datos:</label>
+                <input type="text" id="sensor-value" name="sensor-value" required value="MOVIMIENTO_NO_AUTORIZADO">
+
+                <input type="submit" value="Enviar Evento (POST /sensor/event)">
+            </form>
+            <p id="sensor-response" style="font-size: 0.9em; margin-top: 10px;"></p>
+        </div>
+
+        <h2>⚙️ Control de Acceso (Autorización por Roles)</h2>
+        <div class="box" style="display: flex; gap: 20px;">
+            <div>
+                <h3>GET /system/status</h3>
+                <p style="font-size: 0.9em;">(Roles permitidos: Admin, Operator, Viewer)</p>
+                <button onclick="fetchProtected('/system/status', 'GET')">Ver Estado</button>
+            </div>
+            <div>
+                <h3>POST /system/reset</h3>
+                <p style="font-size: 0.9em;">(Rol requerido: Admin)</p>
+                <button onclick="fetchProtected('/system/reset', 'POST')">Resetear Sistema</button>
+            </div>
+        </div>
+        <p id="protected-response" style="font-size: 0.9em; margin-top: 10px;"></p>
+
+        <h2>📰 Alertas en Tiempo Real (WebSocket)</h2>
+        <ul id="log">
+            <li>Esperando la conexión WebSocket...</li>
+        </ul>
+    </div>
+
+    <script>
+        // Envolver todo en DOMContentLoaded para asegurar que los elementos HTML existan antes de adjuntar listeners
+        document.addEventListener('DOMContentLoaded', (event) => {
+            const wsStatusEl = document.getElementById('ws-status');
+            const userRoleEl = document.getElementById('user-role');
+            const jwtTokenEl = document.getElementById('jwt-token');
+            const log = document.getElementById('log');
+            const sensorResponseEl = document.getElementById('sensor-response');
+            const protectedResponseEl = document.getElementById('protected-response');
+
+            let accessToken = localStorage.getItem('access_token') || null;
+
+            // --- Funciones de Utilidad ---
+
+            function updateStatus(el, message, className) {
+                el.textContent = message;
+                el.className = 'status-badge ' + className;
+            }
+
+            function logAlert(message, level = '') {
+                const li = document.createElement('li');
+                li.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+                if (level) {
+                    li.className = level.toLowerCase();
+                }
+                log.prepend(li);
+            }
+
+            function updateTokenDisplay() {
+                if (accessToken) {
+                    const parts = accessToken.split('.');
+                    if (parts.length === 3) {
+                        try {
+                            const payload = JSON.parse(atob(parts[1]));
+                            const role = payload.role || 'Desconocido';
+                            updateStatus(userRoleEl, `Autenticado: ${role}`, 'status-ok');
+                            jwtTokenEl.textContent = accessToken.substring(0, 30) + '...';
+                            return;
+                        } catch (e) {
+                            console.error("Error decodificando JWT:", e);
+                        }
+                    }
+                }
+                updateStatus(userRoleEl, 'No Autenticado', 'status-error');
+                jwtTokenEl.textContent = 'No token';
+                localStorage.removeItem('access_token');
+                accessToken = null;
+            }
+
+            // --- 1. WebSocket Manager ---
+
+            function connectWebSocket() {
+                const wsUrl = `ws://${window.location.host}/ws/alerts`;
+                const socket = new WebSocket(wsUrl);
+
+                socket.onopen = () => {
+                    updateStatus(wsStatusEl, "Conectado y Escuchando", 'status-ok');
+                    log.innerHTML = '<li>✅ Conexión WebSocket establecida.</li>';
+                };
+
+                socket.onmessage = (event) => {
+                    let message = event.data;
+                    let level = '';
+
+                    if (message.includes('"CRITICAL"')) {
+                        level = 'CRITICAL';
+                    } else if (message.includes('"WARNING"')) {
+                        level = 'WARNING';
+                    }
+
+                    logAlert(message, level);
+                };
+
+                socket.onclose = () => {
+                    updateStatus(wsStatusEl, "Desconectado", 'status-error');
+                    logAlert("❌ WebSocket Desconectado. Reconectando en 5s...", 'warning');
+                    setTimeout(connectWebSocket, 5000); // Intenta reconectar
+                };
+
+                socket.onerror = (error) => {
+                    console.error("[error]", error);
+                };
+            }
+
+            // --- 2. Login y Token ---
+
+            document.getElementById('login-form').addEventListener('submit', async (e) => {
+                console.log("HANDLER: Login interceptado.");
+                e.preventDefault();
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+
+                try {
+                    const response = await fetch('/token', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded'
+                        },
+                        body: `grant_type=password&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&scope=&client_id=&client_secret=`
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        accessToken = data.access_token;
+                        localStorage.setItem('access_token', accessToken);
+                        updateTokenDisplay();
+                        alert(`¡Login exitoso! Rol: ${data.role}`);
+                    } else {
+                        // Manejo de errores mejorado
+                        const errorData = await response.json();
+
+                        let errorMessage = "Credenciales incorrectas o error de servidor.";
+
+                        if (errorData && errorData.detail) {
+                            if (typeof errorData.detail === 'string') {
+                                errorMessage = errorData.detail;
+                            } else if (Array.isArray(errorData.detail)) {
+                                // Si es un array (errores de validación de FastAPI), mapeamos los mensajes
+                                errorMessage = errorData.detail.map(e => `${e.loc.join(" -> ")}: ${e.msg}`).join("; ");
+                            } else {
+                                errorMessage = JSON.stringify(errorData.detail);
+                            }
+                        }
+
+                        alert(`Error de Login: ${errorMessage}`);
+                        updateTokenDisplay();
+                    }
+                } catch (error) {
+                    // Este catch maneja errores de red
+                    alert('Error de red al intentar el login.');
+                    updateTokenDisplay();
+                }
+            }); // Cierre correcto del listener de login
+
+            // --- 3. Simulación de Sensores ---
+
+            document.getElementById('sensor-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const type = document.getElementById('sensor-type').value;
+                const value = document.getElementById('sensor-value').value;
+
+                sensorResponseEl.textContent = 'Enviando...';
+
+                const payload = {
+                    sensor_type: type,
+                    sensor_id: `${type.toUpperCase().substring(0, 1)}-007`,
+                    timestamp: Date.now() / 1000,
+                    value: value
+                };
+
+                try {
+                    const response = await fetch('/sensor/event', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const data = await response.json();
+
+                    if (response.status === 202) {
+                        sensorResponseEl.textContent = `✅ ${data.message}`;
+                        sensorResponseEl.style.color = '#00ffcc';
+                    } else {
+                        sensorResponseEl.textContent = `❌ Error ${response.status}: ${data.detail}`;
+                        sensorResponseEl.style.color = 'red';
+                    }
+
+                } catch (error) {
+                    sensorResponseEl.textContent = '❌ Error de red al enviar el evento.';
+                    sensorResponseEl.style.color = 'red';
+                }
+            });
+
+            // --- 4. Rutas Protegidas ---
+
+            async function fetchProtected(endpoint, method) {
+                protectedResponseEl.textContent = 'Llamando a la ruta protegida...';
+                protectedResponseEl.style.color = '#c9d1d9';
+
+                if (!accessToken) {
+                    protectedResponseEl.textContent = '❌ ERROR: Necesitas iniciar sesión primero (Token no encontrado).';
+                    protectedResponseEl.style.color = 'red';
+                    return;
+                }
+
+                try {
+                    const response = await fetch(endpoint, {
+                        method: method,
+                        headers: {
+                            'Authorization': `Bearer ${accessToken}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        protectedResponseEl.textContent = `✅ Éxito (${response.status}): ${JSON.stringify(data)}`;
+                        protectedResponseEl.style.color = '#00ffcc';
+                    } else {
+                        // Manejar 401 Unauthorized y 403 Forbidden
+                        protectedResponseEl.textContent = `❌ Error ${response.status} (${data.detail}): Rol no autorizado o Token inválido.`;
+                        protectedResponseEl.style.color = 'red';
+                    }
+
+                } catch (error) {
+                    protectedResponseEl.textContent = '❌ Error de red al acceder a la ruta.';
+                    protectedResponseEl.style.color = 'red';
+                }
+            }
+
+            // --- Inicialización ---
+            updateTokenDisplay(); // Carga el token del almacenamiento local al cargar la página
+            connectWebSocket(); // Inicia la conexión WebSocket
+
+        }); // Cierre del listener de DOMContentLoaded
+    </script>
+</body>
+</html>
