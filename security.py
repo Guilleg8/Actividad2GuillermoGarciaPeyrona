@@ -1,4 +1,3 @@
-# security.py
 from enum import Enum
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
@@ -8,7 +7,6 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 from passlib.context import CryptContext
 
-# --- Configuración JWT y Seguridad ---
 SECRET_KEY = "tu_super_clave_secreta" # ¡Cambiar en producción!
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
@@ -16,20 +14,17 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 pwd_context = CryptContext(schemes=["sha256_crypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-# Roles definidos [cite: 44]
 class Role(str, Enum):
-    ADMIN = "admin" # Acceso completo [cite: 45]
-    OPERATOR = "operator" # Procesamiento de eventos [cite: 46]
-    VIEWER = "viewer" # Solo lectura [cite: 47]
+    ADMIN = "admin"
+    OPERATOR = "operator"
+    VIEWER = "viewer"
 
-# Base de datos de usuarios simulada
 FAKE_USERS_DB = {
     "tony": {"username": "tony", "hashed_password": pwd_context.hash("ironman"), "role": Role.ADMIN},
     "rhodey": {"username": "rhodey", "hashed_password": pwd_context.hash("war-machine"), "role": Role.OPERATOR},
     "pepper": {"username": "pepper", "hashed_password": pwd_context.hash("rescue"), "role": Role.VIEWER},
 }
 
-# --- Funciones de JWT y Autenticación ---
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
@@ -57,24 +52,11 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> Dict[str, Any]:
     except JWTError:
         raise credentials_exception
 
-# --- Dependencia de Autorización (Roles) ---
-
-# security.py (CORRECTED)
-# security.py
-
-# ... (tus otras importaciones y código) ...
-
 def get_authorized_user(
         allowed_roles: List[Role]
 ) -> Any:
-    """
-    Fábrica de dependencias que crea y devuelve la función 'role_verifier' (el callable)
-    que FastAPI ejecutará para autenticar y autorizar.
-    """
 
-    # Función interna que verifica el rol después de la autenticación
     def role_verifier(user_dict: Dict[str, Any] = Depends(get_current_user)):
-        # user_dict es el resultado *resuelto* de get_current_user (el diccionario)
         user_role = user_dict.get("role")
 
         if user_role not in [role.value for role in allowed_roles]:
@@ -82,7 +64,6 @@ def get_authorized_user(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Acción no permitida. Rol requerido: {', '.join([r.value for r in allowed_roles])}"
             )
-        return user_dict  # Devolver el objeto de usuario
+        return user_dict
 
-    # ¡LA CLAVE! Devolver la función callable 'role_verifier'
-    return role_verifier  # <-- ¡CORREGIDO! Devolvemos la función, no Depends(funcion)
+    return role_verifier

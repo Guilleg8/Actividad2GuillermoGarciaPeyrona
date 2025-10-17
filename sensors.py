@@ -1,9 +1,7 @@
-# sensors.py
 from pydantic import BaseModel
 from abc import ABC, abstractmethod
 from typing import Dict, Optional, Any
 
-# Modelos de Pydantic para los datos de entrada
 class SensorData(BaseModel):
     sensor_type: str
     sensor_id: str
@@ -13,19 +11,16 @@ class SensorData(BaseModel):
 class Alert(BaseModel):
     sensor_id: str
     message: str
-    level: str # Ej: CRITICAL, WARNING
+    level: str
 
-# Clase base abstracta [cite: 30]
 class BaseSensor(ABC):
     @abstractmethod
     def process_event(self, data: SensorData) -> Optional[Alert]:
-        """Procesa datos del sensor y retorna una Alerta si aplica[cite: 34]."""
         pass
 
-# Implementación de Sensores específicos [cite: 31, 32, 33]
 class MotionSensor(BaseSensor):
     def process_event(self, data: SensorData) -> Optional[Alert]:
-        if data.value == "MOVIMIENTO_NO_AUTORIZADO": # Ejemplo de condición crítica [cite: 19]
+        if data.value == "MOVIMIENTO_NO_AUTORIZADO":
             return Alert(
                 sensor_id=data.sensor_id,
                 message="¡Movimiento no autorizado detectado! Intrusion[cite: 19].",
@@ -35,7 +30,7 @@ class MotionSensor(BaseSensor):
 
 class TemperatureSensor(BaseSensor):
     def process_event(self, data: SensorData) -> Optional[Alert]:
-        if isinstance(data.value, (int, float)) and data.value > 150: # Ejemplo de temperatura extrema [cite: 19]
+        if isinstance(data.value, (int, float)) and data.value > 150:
             return Alert(
                 sensor_id=data.sensor_id,
                 message=f"Temperatura extrema detectada: {data.value}°C.",
@@ -53,7 +48,6 @@ class AccessSensor(BaseSensor):
             )
         return None
 
-# Registro de sensores (Contenedor) [cite: 35]
 SENSOR_REGISTRY: Dict[str, BaseSensor] = {
     "motion": MotionSensor(),
     "temperature": TemperatureSensor(),

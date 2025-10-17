@@ -1,4 +1,3 @@
-// Contenido correcto para script.js
 
 document.addEventListener('DOMContentLoaded', (event) => {
     const wsStatusEl = document.getElementById('ws-status');
@@ -10,7 +9,6 @@ document.addEventListener('DOMContentLoaded', (event) => {
 
     let accessToken = localStorage.getItem('access_token') || null;
 
-    // --- Funciones de Utilidad ---
 
     function updateStatus(el, message, className) {
         el.textContent = message;
@@ -47,10 +45,8 @@ document.addEventListener('DOMContentLoaded', (event) => {
         accessToken = null;
     }
 
-    // --- 1. WebSocket Manager ---
-
     function connectWebSocket() {
-        const wsUrl = `ws://${window.location.host}/ws/alerts`;
+        const wsUrl = `ws:
         const socket = new WebSocket(wsUrl);
 
         socket.onopen = () => {
@@ -82,8 +78,6 @@ document.addEventListener('DOMContentLoaded', (event) => {
         };
     }
 
-    // --- 2. Login y Token ---
-
     document.getElementById('login-form').addEventListener('submit', async (e) => {
         console.log("HANDLER: Login interceptado.");
         e.preventDefault();
@@ -106,7 +100,6 @@ document.addEventListener('DOMContentLoaded', (event) => {
                 updateTokenDisplay();
                 alert(`¡Login exitoso! Rol: ${data.role}`);
             } else {
-                // Manejo de errores mejorado
                 const errorData = await response.json();
 
                 let errorMessage = "Credenciales incorrectas o error de servidor.";
@@ -115,7 +108,6 @@ document.addEventListener('DOMContentLoaded', (event) => {
                     if (typeof errorData.detail === 'string') {
                         errorMessage = errorData.detail;
                     } else if (Array.isArray(errorData.detail)) {
-                        // Si es un array (errores de validación de FastAPI), mapeamos los mensajes
                         errorMessage = errorData.detail.map(e => `${e.loc.join(" -> ")}: ${e.msg}`).join("; ");
                     } else {
                         errorMessage = JSON.stringify(errorData.detail);
@@ -126,13 +118,10 @@ document.addEventListener('DOMContentLoaded', (event) => {
                 updateTokenDisplay();
             }
         } catch (error) {
-            // Este catch maneja errores de red
             alert('Error de red al intentar el login.');
             updateTokenDisplay();
         }
-    }); // Cierre correcto del listener de login
-
-    // --- 3. Simulación de Sensores ---
+    });
 
     document.getElementById('sensor-form').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -171,10 +160,6 @@ document.addEventListener('DOMContentLoaded', (event) => {
         }
     });
 
-    // --- 4. Rutas Protegidas ---
-
-    // Esta función necesita ser accesible globalmente o adjuntada al objeto window para que los `onclick` del HTML la encuentren.
-    // Una forma sencilla es definirla fuera del DOMContentLoaded o adjuntarla explícitamente a window.
     window.fetchProtected = async function(endpoint, method) {
         protectedResponseEl.textContent = 'Llamando a la ruta protegida...';
         protectedResponseEl.style.color = '#c9d1d9';
@@ -200,7 +185,6 @@ document.addEventListener('DOMContentLoaded', (event) => {
                 protectedResponseEl.textContent = `✅ Éxito (${response.status}): ${JSON.stringify(data)}`;
                 protectedResponseEl.style.color = '#00ffcc';
             } else {
-                // Manejar 401 Unauthorized y 403 Forbidden
                 protectedResponseEl.textContent = `❌ Error ${response.status} (${data.detail}): Rol no autorizado o Token inválido.`;
                 protectedResponseEl.style.color = 'red';
             }
@@ -211,8 +195,6 @@ document.addEventListener('DOMContentLoaded', (event) => {
         }
     }
 
-    // --- Inicialización ---
-    updateTokenDisplay(); // Carga el token del almacenamiento local al cargar la página
-    connectWebSocket(); // Inicia la conexión WebSocket
-
-}); // Cierre del listener de DOMContentLoaded
+    updateTokenDisplay();
+    connectWebSocket();
+});
