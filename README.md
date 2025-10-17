@@ -65,6 +65,7 @@ uvicorn main:app --reload
 ```
 
 ##📝 Estructura del Proyecto
+```
 .
 ├── main.py              # Aplicación principal FastAPI y definición de rutas.
 ├── processing.py        # Lógica para el procesamiento concurrente de datos.
@@ -75,3 +76,4 @@ uvicorn main:app --reload
 └── static/
     ├── index.html       # Interfaz de usuario del dashboard.
     └── script.js        # Lógica del frontend (conexión WebSocket, peticiones API).
+```
