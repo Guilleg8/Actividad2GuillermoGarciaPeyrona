@@ -64,7 +64,7 @@ Una vez instaladas las dependencias, inicia el servidor de desarrollo Uvicorn de
 uvicorn main:app --reload
 ```
 
-##📝 Estructura del Proyecto
+## 📝 Estructura del Proyecto
 ```
 .
 ├── main.py              # Aplicación principal FastAPI y definición de rutas.
